@@ -184,6 +184,7 @@ def evaluate(
     n_is_samples: int = 16,
     add_bos: bool = True,
     seed: int = 0,
+    batch_size: int = 16,
     verbose: bool = True,
 ) -> RunResult:
     """Run the selected methods over ``items`` and tally accuracy and cost."""
@@ -191,7 +192,7 @@ def evaluate(
 
     adapter = HFTokenizerAdapter(tokenizer)
     id_to_piece = adapter.id_to_piece()
-    scorer = LMScorer(model, tokenizer, add_bos=add_bos)
+    scorer = LMScorer(model, tokenizer, add_bos=add_bos, batch_size=batch_size)
     rng = random.Random(seed)
     # Compute the longest token length once; reused for every lattice build.
     max_token_len = max((len(t) for t in adapter.vocab()), default=1)
@@ -361,6 +362,7 @@ def run_qa(
     n_is_samples: int = 16,
     add_bos: bool = True,
     seed: int = 0,
+    batch_size: int = 16,
     out_dir: str = "results",
     resume: bool = True,
     make_plots: bool = True,
@@ -400,6 +402,7 @@ def run_qa(
             n_is_samples=n_is_samples,
             add_bos=add_bos,
             seed=seed,
+            batch_size=batch_size,
         )
         save_run(res, out_dir)
         results.append(res)
@@ -453,6 +456,7 @@ def main() -> None:
     p.add_argument("--k", type=int, default=64, help="tokenizations scored by the lattice method")
     p.add_argument("--max-len", type=int, default=None, help="max tokens per tokenization")
     p.add_argument("--is-samples", type=int, default=16, help="importance-sampling samples")
+    p.add_argument("--batch-size", type=int, default=16, help="scorer batch size (raise on GPU)")
     p.add_argument("--methods", nargs="+", default=["canonical", "lattice", "importance"])
     p.add_argument("--load-in-4bit", action="store_true")
     p.add_argument("--seed", type=int, default=0)
@@ -490,6 +494,7 @@ def main() -> None:
         max_len=args.max_len,
         n_is_samples=args.is_samples,
         seed=args.seed,
+        batch_size=args.batch_size,
         out_dir=args.out_dir,
         resume=not args.no_resume,
     )
