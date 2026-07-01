@@ -1,4 +1,4 @@
-.PHONY: install test smoke experiment plots clean
+.PHONY: install test validate lint smoke experiment plots clean
 
 install:
 	pip install -r requirements.txt
@@ -6,6 +6,14 @@ install:
 # Pure-Python correctness suite, no model download.
 test:
 	pytest -q
+
+# The correctness gate as one command, with a readable report.
+validate:
+	python validate.py
+
+# Style and static checks.
+lint:
+	ruff check .
 
 # End-to-end pipeline on CPU with a tiny model.
 smoke:

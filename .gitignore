@@ -37,3 +37,7 @@ hf_cache/
 results/raw/
 results/checkpoints/
 scratch/
+
+# Colab background-run scratch
+run.log
+run_status.json

@@ -1,0 +1,27 @@
+[project]
+name = "decoding-free-marginalization"
+version = "0.1.0"
+description = "Open reproduction of decoding-free LLM marginalization (arXiv:2510.20208)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "ruff>=0.5"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+# Notebooks follow different conventions (imports beside the code that uses them).
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+# pycodestyle errors, pyflakes, import sorting, common bug patterns, pyupgrade.
+select = ["E", "F", "I", "B", "UP"]
+ignore = [
+    "E741",  # ambiguous variable names (l, i, j are fine for math/index code)
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

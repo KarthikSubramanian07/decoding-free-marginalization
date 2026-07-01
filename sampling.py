@@ -20,7 +20,7 @@ scorer consumes and what makes deduplication trivial.
 from __future__ import annotations
 
 import random
-from typing import Iterable, Sequence
+from collections.abc import Iterable
 
 from lattice import Lattice
 

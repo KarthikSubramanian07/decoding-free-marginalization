@@ -12,7 +12,7 @@ only module that depends on ``torch`` and ``transformers``; everything upstream
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import torch
 

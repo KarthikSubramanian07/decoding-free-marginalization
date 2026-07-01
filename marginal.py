@@ -21,12 +21,13 @@ Hugging Face implementation lives in ``scoring.py``; the tests pass a toy
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Callable, Sequence
+import random
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Callable
 
 from lattice import Lattice
 from sampling import off_by_one, uniform_sample
-import random
 
 Tokenization = tuple[int, ...]
 ScoreFn = Callable[[Sequence[Tokenization]], list[float]]

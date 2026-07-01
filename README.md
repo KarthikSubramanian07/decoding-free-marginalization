@@ -79,7 +79,8 @@ a `huggingface-cli login`. No payment.
 Verify the math with no model download:
 
 ```bash
-pytest -q
+pytest -q          # full correctness suite
+python validate.py # the correctness gate as one command, with a readable report
 ```
 
 Run the pipeline end to end on CPU with a tiny model (a few megabytes, no GPU):
@@ -92,10 +93,14 @@ Run the real Q&A evaluation on a free GPU:
 
 ```bash
 python experiments.py \
-  --model google/gemma-3-1b-it \
+  --model google/gemma-3-1b-pt \
   --datasets arc openbookqa medmcqa \
-  --n-questions 250 --k 64 --is-samples 16
+  --n-questions 250 --k 64 --is-samples 16 --batch-size 64
 ```
+
+The base (`-pt`) model is the faithful choice: marginalization reads raw
+next-token probabilities. Runs checkpoint per dataset, so an interrupted run
+resumes where it left off.
 
 Add `--load-in-4bit` to fit `meta-llama/Llama-2-7b-hf` on a single T4. Or open
 [notebook.ipynb](notebook.ipynb) on Colab or Kaggle and run all cells. The full
@@ -116,6 +121,8 @@ against exact enumeration on short strings:
 
 All of these pass (`pytest -q`), and the tiny-model smoke test confirms the
 estimator matches the exact marginal to floating-point precision on a real model.
+`python validate.py` runs the same gate as a single command with a readable
+report, and it doubles as a CI smoke test alongside the linter.
 
 ## Results
 

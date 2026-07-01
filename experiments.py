@@ -131,7 +131,7 @@ class MethodTally:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "MethodTally":
+    def from_dict(cls, d: dict) -> MethodTally:
         return cls(**d)
 
 
@@ -161,7 +161,7 @@ class RunResult:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "RunResult":
+    def from_dict(cls, d: dict) -> RunResult:
         return cls(
             dataset=d["dataset"],
             model_name=d["model_name"],

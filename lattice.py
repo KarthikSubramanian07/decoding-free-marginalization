@@ -30,8 +30,9 @@ lattice, and every edge we add corresponds to a real token id.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Iterable, Iterator, Protocol, Sequence
+from collections.abc import Iterator
+from dataclasses import dataclass
+from typing import Protocol
 
 
 class TokenizerAdapter(Protocol):
@@ -82,7 +83,9 @@ class Lattice:
     # -- construction ---------------------------------------------------------
 
     @classmethod
-    def build(cls, text: str, adapter: TokenizerAdapter, max_token_len: int | None = None) -> "Lattice":
+    def build(
+        cls, text: str, adapter: TokenizerAdapter, max_token_len: int | None = None
+    ) -> Lattice:
         """Construct the lattice for ``text`` under ``adapter``.
 
         ``max_token_len`` caps the surface length of tokens we try to match at
@@ -148,7 +151,9 @@ class Lattice:
 
     # -- indexing / enumeration ----------------------------------------------
 
-    def nth_path(self, z: int, counts: list[list[int]], max_len: int | None = None) -> tuple[int, ...]:
+    def nth_path(
+        self, z: int, counts: list[list[int]], max_len: int | None = None
+    ) -> tuple[int, ...]:
         """Return the ``z``-th tokenization (1-indexed) under a length budget.
 
         ``counts`` must be the table returned by ``path_counts(max_len)``. The
