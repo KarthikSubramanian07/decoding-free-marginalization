@@ -1,0 +1,38 @@
+# Private notes and planning docs (never publish)
+.private/
+*.private.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hf_cache/
+hf_cache/
+*.log
+
+# OS
+.DS_Store
+
+# Model weights / large downloads
+*.safetensors
+*.bin
+*.gguf
+
+# Local experiment scratch (keep results/ committed CSVs + plots, ignore raw dumps)
+results/raw/
+scratch/
