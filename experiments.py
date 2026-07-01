@@ -51,7 +51,8 @@ def load_qa_dataset(name: str, n: int | None = 250, seed: int = 0) -> list[QAIte
 
     name = name.lower()
     if name in ("openbookqa", "obqa"):
-        ds = load_dataset("openbookqa", "main", split="validation")
+        # Namespaced repo ids are required by modern datasets / huggingface_hub.
+        ds = load_dataset("allenai/openbookqa", "main", split="validation")
         items = [
             QAItem(
                 question=r["question_stem"],
@@ -61,7 +62,7 @@ def load_qa_dataset(name: str, n: int | None = 250, seed: int = 0) -> list[QAIte
             for r in ds
         ]
     elif name in ("arc", "arc-challenge", "arc_challenge"):
-        ds = load_dataset("ai2_arc", "ARC-Challenge", split="validation")
+        ds = load_dataset("allenai/ai2_arc", "ARC-Challenge", split="validation")
         items = []
         for r in ds:
             labels = r["choices"]["label"]
@@ -75,7 +76,7 @@ def load_qa_dataset(name: str, n: int | None = 250, seed: int = 0) -> list[QAIte
                 )
             )
     elif name == "medmcqa":
-        ds = load_dataset("medmcqa", split="validation")
+        ds = load_dataset("openlifescienceai/medmcqa", split="validation")
         items = [
             QAItem(
                 question=r["question"],

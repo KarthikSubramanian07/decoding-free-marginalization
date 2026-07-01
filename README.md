@@ -98,7 +98,9 @@ python experiments.py \
 ```
 
 Add `--load-in-4bit` to fit `meta-llama/Llama-2-7b-hf` on a single T4. Or open
-[notebook.ipynb](notebook.ipynb) on Colab or Kaggle and run all cells.
+[notebook.ipynb](notebook.ipynb) on Colab or Kaggle and run all cells. The full
+step-by-step for a free GPU, including the license and token setup, is in
+[RUNNING.md](RUNNING.md).
 
 ## Validation
 
