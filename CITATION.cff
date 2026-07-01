@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+title: "Decoding-Free Marginalization: an open reproduction"
+message: "If you use this reproduction, please cite it and the original paper."
+type: software
+authors:
+  - family-names: Subramanian
+    given-names: Karthik
+repository-code: "https://github.com/KarthikSubramanian07/decoding-free-marginalization"
+abstract: >-
+  An independent, open-source reproduction of "Decoding-Free Sampling Strategies
+  for LLM Marginalization" (arXiv:2510.20208). Estimates the marginal probability
+  of a text over all of its tokenizations without running generation, using a
+  tokenization lattice, decoding-free samplers, and single-pass scoring.
+keywords:
+  - language-models
+  - tokenization
+  - marginalization
+  - reproducibility
+license: MIT
+references:
+  - type: article
+    title: "Decoding-Free Sampling Strategies for LLM Marginalization"
+    authors:
+      - family-names: Pohl
+        given-names: David
+      - family-names: Cognetta
+        given-names: Marco
+      - family-names: Lee
+        given-names: Junyoung
+      - family-names: Okazaki
+        given-names: Naoaki
+    year: 2025
+    url: "https://arxiv.org/abs/2510.20208"
+    notes: "Original paper reproduced here."
