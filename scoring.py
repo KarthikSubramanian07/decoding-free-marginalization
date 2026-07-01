@@ -43,6 +43,11 @@ def load_model(
     sig = inspect.signature(AutoModelForCausalLM.from_pretrained)
     dtype_key = "dtype" if "dtype" in sig.parameters else "torch_dtype"
 
+    # bfloat16 on GPU, not float16. Models like Gemma are trained in bf16 and
+    # overflow fp16, producing NaN logits (and, downstream, blank/garbage
+    # marginals). bf16 has the same exponent range as fp32, so it is safe.
+    gpu_dtype = torch.bfloat16
+
     kwargs: dict = {}
     if load_in_4bit:
         from transformers import BitsAndBytesConfig
@@ -50,13 +55,13 @@ def load_model(
         kwargs["quantization_config"] = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_compute_dtype=gpu_dtype,
             bnb_4bit_use_double_quant=True,
         )
         kwargs["device_map"] = {"": 0} if device == "cuda" else device
     else:
         if dtype == "auto":
-            kwargs[dtype_key] = torch.float16 if device == "cuda" else torch.float32
+            kwargs[dtype_key] = gpu_dtype if device == "cuda" else torch.float32
         else:
             kwargs[dtype_key] = getattr(torch, dtype)
 
@@ -161,6 +166,14 @@ class LMScorer:
         gathered = shift_logp.gather(-1, labels.unsqueeze(-1)).squeeze(-1)
         gathered = gathered.masked_fill(~answer_mask, 0.0)
         totals = gathered.sum(dim=-1)
+
+        if torch.isnan(totals).any():
+            raise RuntimeError(
+                "NaN log-probabilities from the model. This usually means the "
+                "model was loaded in float16 but needs bfloat16 (Gemma is a "
+                "common case). Reload with dtype='bfloat16' or on a GPU, where "
+                "load_model now defaults to bfloat16."
+            )
         return [float(x) for x in totals.cpu()]
 
     def score_fn(self, context_ids: Sequence[int] | None = None):
