@@ -23,8 +23,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import random
+import re
 import time
 from dataclasses import dataclass, field
 
@@ -120,6 +122,18 @@ class MethodTally:
     def accuracy(self) -> float:
         return self.correct / self.total if self.total else 0.0
 
+    def to_dict(self) -> dict:
+        return {
+            "correct": self.correct,
+            "total": self.total,
+            "seconds": self.seconds,
+            "forward_passes": self.forward_passes,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "MethodTally":
+        return cls(**d)
+
 
 @dataclass
 class RunResult:
@@ -129,10 +143,34 @@ class RunResult:
     is_below_lattice: int = 0
     is_lattice_pairs: int = 0
     records: list[dict] = field(default_factory=list)
+    config: dict = field(default_factory=dict)
 
     @property
     def underestimation_rate(self) -> float:
         return self.is_below_lattice / self.is_lattice_pairs if self.is_lattice_pairs else 0.0
+
+    def to_dict(self) -> dict:
+        return {
+            "dataset": self.dataset,
+            "model_name": self.model_name,
+            "tallies": {m: t.to_dict() for m, t in self.tallies.items()},
+            "is_below_lattice": self.is_below_lattice,
+            "is_lattice_pairs": self.is_lattice_pairs,
+            "records": self.records,
+            "config": self.config,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "RunResult":
+        return cls(
+            dataset=d["dataset"],
+            model_name=d["model_name"],
+            tallies={m: MethodTally.from_dict(t) for m, t in d["tallies"].items()},
+            is_below_lattice=d.get("is_below_lattice", 0),
+            is_lattice_pairs=d.get("is_lattice_pairs", 0),
+            records=d.get("records", []),
+            config=d.get("config", {}),
+        )
 
 
 def evaluate(
@@ -159,7 +197,19 @@ def evaluate(
     max_token_len = max((len(t) for t in adapter.vocab()), default=1)
 
     tallies = {m: MethodTally() for m in methods}
-    result = RunResult(dataset=dataset_name, model_name=model.name_or_path, tallies=tallies)
+    result = RunResult(
+        dataset=dataset_name,
+        model_name=model.name_or_path,
+        tallies=tallies,
+        config={
+            "n_questions": len(items),
+            "k": k,
+            "n_is_samples": n_is_samples,
+            "max_len": max_len,
+            "seed": seed,
+            "methods": list(methods),
+        },
+    )
 
     for qi, item in enumerate(items):
         prompt = build_prompt(item.question)
@@ -266,6 +316,107 @@ def write_summary(results: list[RunResult], out_dir: str = "results") -> str:
     return path
 
 
+# --------------------------------------------------------------------------- #
+# Checkpointing (so a long run survives a Colab disconnect and resumes)
+# --------------------------------------------------------------------------- #
+
+def _checkpoint_path(out_dir: str, model_name: str, dataset: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9._-]", "_", f"{model_name}__{dataset}")
+    return os.path.join(out_dir, "checkpoints", safe + ".json")
+
+
+def save_run(result: RunResult, out_dir: str = "results") -> str:
+    path = _checkpoint_path(out_dir, result.model_name, result.dataset)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(result.to_dict(), f)
+    return path
+
+
+def load_run(out_dir: str, model_name: str, dataset: str, want_config: dict) -> RunResult | None:
+    """Return a saved run only if it matches the requested config, else None."""
+    path = _checkpoint_path(out_dir, model_name, dataset)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path) as f:
+            res = RunResult.from_dict(json.load(f))
+    except (json.JSONDecodeError, KeyError):
+        return None
+    # Reuse only if the settings that affect the numbers are unchanged.
+    for key in ("n_questions", "k", "n_is_samples", "max_len", "seed"):
+        if res.config.get(key) != want_config.get(key):
+            return None
+    return res
+
+
+def run_qa(
+    model,
+    tokenizer,
+    dataset_names,
+    n_questions: int = 250,
+    methods: tuple[str, ...] = ("canonical", "lattice", "importance"),
+    k: int = 64,
+    max_len: int | None = None,
+    n_is_samples: int = 16,
+    add_bos: bool = True,
+    seed: int = 0,
+    out_dir: str = "results",
+    resume: bool = True,
+    make_plots: bool = True,
+) -> list[RunResult]:
+    """Evaluate each dataset with per-dataset checkpointing.
+
+    Finished datasets are written to ``results/checkpoints/`` and skipped on a
+    rerun with the same settings, so a run interrupted by a Colab disconnect
+    resumes instead of starting over. The summary CSV is rewritten after each
+    dataset, so partial progress is always on disk.
+    """
+    want_config = {
+        "n_questions": n_questions,
+        "k": k,
+        "n_is_samples": n_is_samples,
+        "max_len": max_len,
+        "seed": seed,
+    }
+    results: list[RunResult] = []
+    for name in dataset_names:
+        cached = load_run(out_dir, model.name_or_path, name, want_config) if resume else None
+        if cached is not None:
+            print(f"[{name}] using checkpoint ({cached.tallies[methods[0]].total} questions)")
+            results.append(cached)
+            continue
+
+        items = load_qa_dataset(name, n=n_questions, seed=seed)
+        print(f"[{name}] evaluating {len(items)} questions ...")
+        res = evaluate(
+            model,
+            tokenizer,
+            dataset_name=name,
+            items=items,
+            methods=methods,
+            k=k,
+            max_len=max_len,
+            n_is_samples=n_is_samples,
+            add_bos=add_bos,
+            seed=seed,
+        )
+        save_run(res, out_dir)
+        results.append(res)
+        write_summary(results, out_dir=out_dir)  # partial progress on disk
+
+    write_summary(results, out_dir=out_dir)
+    if make_plots:
+        try:
+            from analysis import plot_runtime, plot_underestimation
+
+            plot_runtime(results, out_path=os.path.join(out_dir, "runtime.png"))
+            plot_underestimation(results, out_path=os.path.join(out_dir, "underestimation.png"))
+        except Exception as e:  # plotting is a convenience, not the result
+            print(f"(skipped plots: {e})")
+    return results
+
+
 def print_table(results: list[RunResult]) -> None:
     print("\n=== Q&A results ===")
     header = f"{'dataset':<12} {'method':<11} {'acc':>7} {'sec':>9} {'fwd':>10} {'IS<lat':>7}"
@@ -307,6 +458,11 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out-dir", default="results")
     p.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="ignore checkpoints and re-run every dataset from scratch",
+    )
+    p.add_argument(
         "--smoke",
         action="store_true",
         help="tiny CPU model + few questions to verify the pipeline end to end",
@@ -324,26 +480,22 @@ def main() -> None:
     print(f"Loading {args.model} ...")
     model, tokenizer = load_model(args.model, load_in_4bit=args.load_in_4bit)
 
-    results: list[RunResult] = []
-    for name in args.datasets:
-        items = load_qa_dataset(name, n=args.n_questions, seed=args.seed)
-        print(f"Loaded {len(items)} questions from {name}")
-        res = evaluate(
-            model,
-            tokenizer,
-            dataset_name=name,
-            items=items,
-            methods=tuple(args.methods),
-            k=args.k,
-            max_len=args.max_len,
-            n_is_samples=args.is_samples,
-            seed=args.seed,
-        )
-        results.append(res)
+    results = run_qa(
+        model,
+        tokenizer,
+        dataset_names=args.datasets,
+        n_questions=args.n_questions,
+        methods=tuple(args.methods),
+        k=args.k,
+        max_len=args.max_len,
+        n_is_samples=args.is_samples,
+        seed=args.seed,
+        out_dir=args.out_dir,
+        resume=not args.no_resume,
+    )
 
     print_table(results)
-    path = write_summary(results, out_dir=args.out_dir)
-    print(f"\nWrote {path}")
+    print(f"\nWrote {os.path.join(args.out_dir, 'qa_summary.csv')} and plots")
 
 
 if __name__ == "__main__":

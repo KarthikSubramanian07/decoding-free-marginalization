@@ -35,4 +35,5 @@ hf_cache/
 
 # Local experiment scratch (keep results/ committed CSVs + plots, ignore raw dumps)
 results/raw/
+results/checkpoints/
 scratch/
