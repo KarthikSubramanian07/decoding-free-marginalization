@@ -1,0 +1,14 @@
+# Core numerics and models
+torch>=2.1
+transformers>=4.40
+datasets>=2.18
+accelerate>=0.29
+numpy>=1.24
+matplotlib>=3.7
+
+# 4-bit loading for 7B-class models on a single T4 (GPU only).
+# Safe to skip on CPU-only machines; only imported when --load-in-4bit is passed.
+bitsandbytes>=0.43 ; platform_system == "Linux"
+
+# Testing
+pytest>=7.4
