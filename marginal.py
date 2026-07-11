@@ -110,6 +110,8 @@ def estimate_marginal(
         if tok not in seen:
             seen.add(tok)
             tokenizations.append(tok)
+            if len(tokenizations) >= k:
+                break
     num_near = len(tokenizations)
 
     remaining = k - len(tokenizations)
@@ -121,6 +123,8 @@ def estimate_marginal(
             if tok not in seen:
                 seen.add(tok)
                 tokenizations.append(tok)
+                if len(tokenizations) >= k:
+                    break
 
     log_probs = list(score_fn(tokenizations))
     if len(log_probs) != len(tokenizations):
