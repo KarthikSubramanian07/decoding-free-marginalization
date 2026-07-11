@@ -71,6 +71,15 @@ def test_off_by_one_are_valid_and_include_canonical():
         assert tok in valid
 
 
+def test_estimate_respects_k_budget_with_large_off_by_one_set():
+    lat = build("aaaa")
+    score = MODEL.score_fn()
+    near_count = len(off_by_one(lat, ID_TO_PIECE))
+    assert near_count > 2
+    est = estimate_marginal(lat, ID_TO_PIECE, score, k=2, rng=random.Random(0))
+    assert est.num_unique <= 2
+
+
 def test_uniform_sample_is_unique_and_within_lattice():
     lat = build("aaaa")
     valid = set(lat.iter_paths())

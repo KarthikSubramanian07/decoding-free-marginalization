@@ -21,7 +21,7 @@ smoke:
 
 # Full Q&A reproduction. Override MODEL / DATASETS / N as needed, e.g.
 #   make experiment MODEL=meta-llama/Llama-2-7b-hf EXTRA=--load-in-4bit
-MODEL ?= google/gemma-3-1b-it
+MODEL ?= google/gemma-3-1b-pt
 DATASETS ?= arc openbookqa medmcqa
 N ?= 250
 experiment:

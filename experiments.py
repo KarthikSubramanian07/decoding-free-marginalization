@@ -222,7 +222,17 @@ def evaluate(
             for c in item.choices
         ]
 
+        # Always compute lattice gold-choice baselines before the method loop
+        # so importance underestimation works regardless of --methods order.
         per_choice_lattice_lp: list[float] = []
+        if "importance" in methods or "lattice" in methods:
+            score_fn = scorer.score_fn(context_ids=context_ids)
+            for lat in lattices:
+                est = estimate_marginal(
+                    lat, id_to_piece, score_fn, k=k, max_len=max_len, rng=rng
+                )
+                per_choice_lattice_lp.append(est.log_marginal)
+
         for method in methods:
             t0 = time.perf_counter()
             scores: list[float] = []
@@ -232,13 +242,7 @@ def evaluate(
                 scores = [canonical_log_prob(lat, score_fn) for lat in lattices]
 
             elif method == "lattice":
-                score_fn = scorer.score_fn(context_ids=context_ids)
-                for lat in lattices:
-                    est = estimate_marginal(
-                        lat, id_to_piece, score_fn, k=k, max_len=max_len, rng=rng
-                    )
-                    scores.append(est.log_marginal)
-                per_choice_lattice_lp = scores
+                scores = list(per_choice_lattice_lp)
 
             elif method == "importance":
                 for lat in lattices:
@@ -345,7 +349,7 @@ def load_run(out_dir: str, model_name: str, dataset: str, want_config: dict) -> 
     except (json.JSONDecodeError, KeyError):
         return None
     # Reuse only if the settings that affect the numbers are unchanged.
-    for key in ("n_questions", "k", "n_is_samples", "max_len", "seed"):
+    for key in ("n_questions", "k", "n_is_samples", "max_len", "seed", "methods"):
         if res.config.get(key) != want_config.get(key):
             return None
     return res
@@ -446,7 +450,7 @@ def print_table(results: list[RunResult]) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--model", default="google/gemma-3-1b-it")
+    p.add_argument("--model", default="google/gemma-3-1b-pt")
     p.add_argument(
         "--datasets",
         nargs="+",
